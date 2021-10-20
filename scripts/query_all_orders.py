@@ -2,4 +2,4 @@ from src.client import ClientHelper
 
 if __name__ == '__main__':
     client = ClientHelper()
-    client.query_all_orders()
+    client.get_all_orders()
