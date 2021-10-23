@@ -10,8 +10,11 @@ QUOTE_COINS = ['USDT', 'BUSD']
 
 class OrdersAnalyser:
 
-    def __init__(self, orders):
+    def __init__(self, client_helper, orders):
         self.orders = self.prepare_dataframe(orders)
+        self.client_helper = client_helper
+        self.width = 1200
+        self.height = 400
 
     @staticmethod
     def prepare_dataframe(orders: pd.DataFrame):
@@ -72,10 +75,25 @@ class OrdersAnalyser:
                 text=f"Last price = {round(last_price['Close'], 1)} usdt",
                 arrowhead=2,
             )
+        fig.update_layout(yaxis_title='USDT', width = self.width, height = self.height)
         return fig
+
+    def plot_transactions_many(self, coins):
+        fig_dict = {}
+        for base_coin in coins:  # ['LTC', 'ETH']:
+            price_history = self.client_helper.get_historical_prices(base_coin + 'USDT', start_date='1 Jan, 2021')
+            fig = self.plot_transactions(base_coin, price_history)
+            fig_dict[base_coin] = fig
+        return fig_dict
+
 
 
 class AssetAnalyser:
+
+    def __init__(self, client_helper):
+        self.client_helper = client_helper
+        self.width = 1200
+        self.height = 400
 
     def plot_asset_composition_in_usdt(self, history_assets: pd.DataFrame, prices: pd.DataFrame) -> go.Figure:
         """
@@ -96,5 +114,15 @@ class AssetAnalyser:
             price = prices.loc[prices['base_coin'] == coin, 'price'].item()
             values[i] *= price
         fig = go.Figure(data=[go.Pie(labels=labels, values=values.round(), textinfo='label', )])
-        fig.update_layout(title=f'Asset composition in usdt. Total value = {np.sum(values).round(1)} usdt.', autosize=False, width=500, height=500)
+        fig.update_layout(title=f'Asset composition in usdt. Total value = {np.sum(values).round(1)} usdt.',
+                          autosize=False, width=500, height=500)
+        return fig
+
+    def plot_asset_usdt_value_history(self, history_assets):
+        btc_price_history = self.client_helper.get_historical_prices('BTCUSDT', start_date='1 Jan, 2021')
+        plot_df = history_assets.copy()
+        plot_df = pd.merge(plot_df, btc_price_history[['Close', 'date']], on='date')
+        plot_df['usdt value'] = plot_df['totalAssetOfBtc'] * plot_df['Close']
+        fig = px.line(plot_df, 'date', 'usdt value', title='Asset usdt value history')
+        fig.update_layout(yaxis_title='USDT', autosize=False, width=self.width, height=self.height)
         return fig

@@ -3,7 +3,7 @@ from typing import Optional, Any, List
 from binance.exceptions import BinanceAPIException
 from binance import Client
 
-from .utils import load_api_keys, load_json, convert_timestamp_to_datetime, cast_all_to_float
+from .utils import load_json, convert_timestamp_to_datetime, cast_all_to_float
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
@@ -15,8 +15,7 @@ RECV_WINDOW = 5000
 
 class ClientHelper:
 
-    def __init__(self):
-        api_key, api_secret = load_api_keys()
+    def __init__(self, api_key: str, api_secret: str):
         try:
             self.client = Client(api_key, api_secret)
         except BinanceAPIException as err:
@@ -169,7 +168,7 @@ class ClientHelper:
         """
         df = self.client.get_account_snapshot(type=trade_type, limit=days)
         df = pd.DataFrame(df['snapshotVos'])
-        df['date'] = df['updateTime'].apply(convert_timestamp_to_datetime)
+        df['date'] = df['updateTime'].apply(convert_timestamp_to_datetime) + pd.Timedelta(seconds=1)
         df = df.drop('updateTime', axis=1)
         df['totalAssetOfBtc'] = pd.DataFrame([d['totalAssetOfBtc'] for d in df['data'].values])
         balances = [d['balances'] for d in df['data'].values]
