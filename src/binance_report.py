@@ -1,17 +1,6 @@
-from typing import List
 import pandas as pd
 from pathlib import Path
-
-
-def cast_all_to_float(df: pd.DataFrame, except_columns: List = None):
-    if except_columns is None:
-        except_columns = []
-    for c in set(df.columns) - set(except_columns):
-        try:
-            df[c] = df[c].astype(float)
-            df[c] = df[c].round(10)
-        except ValueError:
-            pass
+from .utils import cast_all_to_float
 
 
 def update_history(df):

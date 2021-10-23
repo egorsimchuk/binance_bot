@@ -1,6 +1,9 @@
 import json
 import datetime
 from pathlib import Path
+from typing import List
+
+import pandas as pd
 
 
 def get_project_dir():
@@ -22,3 +25,14 @@ def load_api_keys():
 
 def convert_timestamp_to_datetime(t):
     return datetime.datetime.fromtimestamp(int(t) / 1000)
+
+
+def cast_all_to_float(df: pd.DataFrame, except_columns: List = None):
+    if except_columns is None:
+        except_columns = []
+    for c in set(df.columns) - set(except_columns):
+        try:
+            df[c] = df[c].astype(float)
+            df[c] = df[c].round(10)
+        except ValueError:
+            pass

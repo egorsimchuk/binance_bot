@@ -3,8 +3,7 @@ from typing import Optional, Any, List
 from binance.exceptions import BinanceAPIException
 from binance import Client
 
-from .binance_report import cast_all_to_float
-from .utils import load_api_keys, load_json, convert_timestamp_to_datetime
+from .utils import load_api_keys, load_json, convert_timestamp_to_datetime, cast_all_to_float
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
@@ -84,8 +83,8 @@ class ClientHelper:
             orders = self.divide_coin_convertion_into_usdt_operations(orders)
 
         if len(orders) > 0:
-            orders['datetime'] = orders['time'].apply(convert_timestamp_to_datetime)
-            orders = orders.sort_values('datetime').reset_index(drop=True)
+            orders['date'] = orders['time'].apply(convert_timestamp_to_datetime)
+            orders = orders.sort_values('date').reset_index(drop=True)
 
         return orders
 
@@ -169,9 +168,9 @@ class ClientHelper:
             Pandas DataFrame with history of asset.
         """
         df = self.client.get_account_snapshot(type=trade_type, limit=days)
-        from src.utils import convert_timestamp_to_datetime
         df = pd.DataFrame(df['snapshotVos'])
-        df['updateTime'] = df['updateTime'].apply(convert_timestamp_to_datetime)
+        df['date'] = df['updateTime'].apply(convert_timestamp_to_datetime)
+        df = df.drop('updateTime', axis=1)
         df['totalAssetOfBtc'] = pd.DataFrame([d['totalAssetOfBtc'] for d in df['data'].values])
         balances = [d['balances'] for d in df['data'].values]
         balances_ = []
@@ -180,4 +179,36 @@ class ClientHelper:
             balances_.append(asset)
         balances_ = pd.DataFrame(balances_)
         balances = pd.concat([df.drop('data', axis=1), balances_], axis=1)
+
+        # get rid of extra points in asset quantity, i.e. usdt count may be 724.15828343149.8
+        for c in ['RUB', 'USDT']:
+            balances[c] = balances[c].apply(lambda x: x[:-4])
+        cast_all_to_float(balances, except_columns=['date'])
+
         return balances
+
+    def get_historical_prices(self, coin_pair, start_date='1 Jan, 2020'):
+        data = self.client.get_historical_klines(coin_pair, Client.KLINE_INTERVAL_1DAY, start_date, limit=1000)
+        columns = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
+                   'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Can be ignored']
+        data = pd.DataFrame(data, columns=columns)
+        cast_all_to_float(data)
+        data['date'] = data['Open time'].apply(convert_timestamp_to_datetime)
+        return data
+
+    def query_prices(self):
+        prices = self.client.get_all_tickers()
+        prices = pd.DataFrame(prices)
+        cast_all_to_float(prices)
+        main_currency = 'USDT'
+        prices = prices[prices['symbol'].apply(lambda x: x[-len(main_currency):] == main_currency)]
+        prices['base_coin'] = prices['symbol'].apply(lambda x: x[:-len(main_currency)])
+        prices['quote_coin'] = main_currency
+        prices = prices.drop('symbol', axis=1)
+        # add BETH price
+        eth_price = prices.loc[prices['base_coin'] == 'ETH', 'price'].item()
+        prices = pd.concat([prices, pd.DataFrame([{'price': eth_price, 'base_coin': 'BETH', 'quote_coin': 'USDT'}])])
+        # add USDT itself price
+        prices['price'] = prices['price'].astype(float)
+        prices = pd.concat([prices, pd.DataFrame([{'price': 1, 'base_coin': 'USDT', 'quote_coin': 'USDT'}])])
+        return prices
