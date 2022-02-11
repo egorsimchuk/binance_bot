@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 import time
 
-from src.utils import get_html_body_from_plotly_figure, load_api_keys
+from src.utils import get_html_body_from_plotly_figure
 
 
 def make_report(api_key, api_secret):

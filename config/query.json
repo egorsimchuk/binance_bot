@@ -1,17 +1,21 @@
 {
   "orders_history": {
     "currency_items": [
+      "ADA",
+      "BETH",
+      "BNB",
+      "BTC",
+      "BUSD",
+      "CAKE",
+      "CELR",
+      "ETH",
+      "LTC",
       "LUNA",
+      "RUB",
       "SOL",
       "USDT",
       "XRP",
-      "BETH",
-      "BTC",
-      "ETH",
-      "BNB",
-      "LTC",
-      "BUSD",
-      "RUB"
+      "SOLO"
     ]
   }
 }

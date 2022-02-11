@@ -111,14 +111,26 @@ class AssetAnalyser:
         labels = [c for c in labels if c not in ['RUB', 'date']]
         values = plot_df[labels].iloc[-1]
         for i, coin in enumerate(labels):
-            price = prices.loc[prices['base_coin'] == coin, 'price'].item()
+            try:
+                price = prices.loc[prices['base_coin'] == coin, 'price'].item()
+            except ValueError:
+                print(f'{coin} coin is not listed in binance, price is not available')
             values[i] *= price
         fig = go.Figure(data=[go.Pie(labels=labels, values=values.round(), textinfo='label', )])
         fig.update_layout(title=f'Asset composition in usdt. Total value = {np.sum(values).round(1)} usdt.',
                           autosize=False, width=500, height=500)
         return fig
 
-    def plot_asset_usdt_value_history(self, history_assets):
+    def plot_asset_usdt_value_history(self, history_assets: pd.DataFrame) -> go.Figure:
+        """
+        Plot the history of usdt's value of asset.
+
+        Args:
+            history_assets: Table with columns ['type', 'date', 'totalAssetOfBtc', all coins in asset].
+
+        Returns:
+
+        """
         btc_price_history = self.client_helper.get_historical_prices('BTCUSDT', start_date='1 Jan, 2021')
         plot_df = history_assets.copy()
         plot_df = pd.merge(plot_df, btc_price_history[['Close', 'date']], on='date')
