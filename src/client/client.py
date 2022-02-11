@@ -100,8 +100,8 @@ class ClientHelper:
                             pool.map(self.query_pair_orders, currency_combinations[i * batch_size:i * batch_size + batch_size]))
                     break
                 except BinanceAPIException:
-                    sleep(60)
                     print('Avoid APIError(code=-1003), sleep extra 60 seconds')
+                    sleep(60)
                     pass
             sleep(10)
 

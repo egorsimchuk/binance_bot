@@ -57,7 +57,7 @@ def save_multiple_formats(fig, html_path, scale=3, width=1200, height=700):
 
 
 def get_project_dir():
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parents[2]
 
 
 def load_config_json(path_from_root):

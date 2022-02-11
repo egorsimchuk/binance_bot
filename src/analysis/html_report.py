@@ -1,11 +1,12 @@
 from src.analysis.analyse import AssetAnalyser, OrdersAnalyser
 from src.client.client import ClientHelper
 import pandas as pd
-import datetime
 import time
+from datetime import datetime
 
+from src.data.dump_data import dump_orders_data, DATA_FOLDER
 from src.utils.utils import get_html_body_from_plotly_figure
-
+REPORT_FOLDER = DATA_FOLDER / 'html_reports'
 
 def make_report(api_key, api_secret):
     start = time.time()
@@ -20,6 +21,7 @@ def make_report(api_key, api_secret):
     asset_history_fig = asset_analyser.plot_asset_usdt_value_history(history_assets)
 
     orders = client_helper.get_all_orders()
+    dump_orders_data(orders)
 
     order_analyser = OrdersAnalyser(client_helper, orders)
     mean_price = order_analyser.calculate_mean_price()
@@ -41,7 +43,8 @@ def make_report(api_key, api_secret):
 
 
 def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transactions_plots_html):
-    report_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_datetime = datetime.now()
+
     mean_price_table = mean_price.round(3).to_html().replace('<table border="1" class="dataframe">',
                                                              '<table class="table table-striped">')  # use bootstrap styling
 
@@ -53,7 +56,7 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transacti
             <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script></head>
         </head>
         <body>
-            <h1>Binance profile report at ''' + report_time + '''</h1>
+            <h1>Binance profile report at ''' + now_datetime.strftime("%Y-%m-%d %H:%M") + '''</h1>
 
             <h2>Section 1: Asset composition</h2>
             ''' + get_html_body_from_plotly_figure(portfolio_fig) + '''
@@ -70,8 +73,10 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transacti
         </body>
     </html>'''
 
-    fpath = 'binance_report.html'
+    now_time = now_datetime.strftime('%Y-%m-%d_%Hh%Mm')
+    REPORT_FOLDER.mkdir(exist_ok=True, parents=True)
+    fpath = REPORT_FOLDER / f'{now_time}.html'
     f = open(fpath, 'w')
     f.write(html_string)
     f.close()
-    print(f'Report saved at {fpath}')
+    print(f'Report was saved at: {fpath}')
