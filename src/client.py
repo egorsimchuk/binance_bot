@@ -3,7 +3,7 @@ from typing import Optional, Any, List
 from binance.exceptions import BinanceAPIException
 from binance import Client
 
-from .utils import load_json, convert_timestamp_to_datetime, cast_all_to_float
+from .utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
@@ -22,7 +22,7 @@ class ClientHelper:
             if err.code == -1003:
                 err.message
             raise err('IP blocked until {convert_timestamp_to_datetime}')
-        query_config = load_json('config/query.json')
+        query_config = load_config_json('config/query.json')
         self.currency_items = query_config['orders_history']['currency_items']
 
     def query_pair_orders(self, currency_pair: list) -> Optional[Any]:

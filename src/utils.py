@@ -34,12 +34,12 @@ def convert_plotly_figure_to_html(fig):
 
 def save_plot_with_external_script_link(fig, fpath, auto_open=False):
     raw_html = convert_plotly_figure_to_html(fig)
-    with open(str(fpath), "w") as text_file:
+    with open(str(fpath), 'w') as text_file:
         text_file.write(raw_html)
 
     if auto_open:
         import webbrowser
-        url = "file://" + str(fpath)
+        url = 'file://' + str(fpath)
         webbrowser.open(url)
 
 
@@ -60,17 +60,16 @@ def get_project_dir():
     return Path(__file__).resolve().parents[1]
 
 
-def load_json(path_from_root):
+def load_config_json(path_from_root):
     with open(get_project_dir() / path_from_root) as file:
         items = json.load(file)
     return items
 
 
-def load_api_keys():
-    keys = load_json('config/api_key.json')
-    api_key = keys['api_key']
-    api_secret = keys['api_secret']
-    return api_key, api_secret
+def load_api_keys_from_json(fpath):
+    with open(fpath) as f:
+        keys = json.load(f)
+    return keys['api_key'], keys['api_secret']
 
 
 def convert_timestamp_to_datetime(t):
