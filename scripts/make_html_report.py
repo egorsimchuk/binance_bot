@@ -1,4 +1,4 @@
-from src.html_report import make_report
+from src.analysis.html_report import make_report
 import argparse
 
 if __name__ == '__main__':

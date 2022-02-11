@@ -1,10 +1,10 @@
-from src.analyse import AssetAnalyser, OrdersAnalyser
-from src.client import ClientHelper
+from src.analysis.analyse import AssetAnalyser, OrdersAnalyser
+from src.client.client import ClientHelper
 import pandas as pd
 import datetime
 import time
 
-from src.utils import get_html_body_from_plotly_figure
+from src.utils.utils import get_html_body_from_plotly_figure
 
 
 def make_report(api_key, api_secret):

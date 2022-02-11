@@ -1,4 +1,4 @@
-from src.client import ClientHelper
+from src.client.client import ClientHelper
 
 if __name__ == '__main__':
     client = ClientHelper()

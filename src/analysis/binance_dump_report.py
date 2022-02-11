@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-from .utils import cast_all_to_float
+from src.utils.utils import cast_all_to_float
 
 
 def update_history(df):

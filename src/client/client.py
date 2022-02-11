@@ -4,7 +4,7 @@ from typing import Optional, Any, List
 from binance.exceptions import BinanceAPIException
 from binance import Client
 
-from .utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
+from src.utils.utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool

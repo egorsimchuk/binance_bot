@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from src.client import ClientHelper
+from src.client.client import ClientHelper
 
 QUOTE_COINS = ['USDT', 'BUSD']
 
