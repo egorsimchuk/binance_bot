@@ -63,7 +63,7 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transacti
             ''' + get_html_body_from_plotly_figure(asset_history_fig) + '''
             ''' + "" + '''
 
-            <h2>Analysis of purchases</h2>
+            <h2>Section 2: Analysis of purchases</h2>
 
             <h3>Average purchase price and benefits compared to current price</h3>
             ''' + mean_price_table + '''

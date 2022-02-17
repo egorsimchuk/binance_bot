@@ -11,12 +11,14 @@ def load_orders_data():
 
 def dump_orders_data(orders: pd.DataFrame):
     DUMP_FOLDER.mkdir(exist_ok=True, parents=True)
+    new_lines = 0
     if DUMP_ORDERS_FPATH.exists():
         orders_old = load_orders_data()
         mask_new = ~orders.date.apply(lambda t: t in orders_old.date.values)
         new_orders = pd.concat([orders_old, orders[mask_new]], axis=0)
+        new_lines = mask_new.sum()
     else:
         new_orders = orders
 
     new_orders.to_csv(DUMP_ORDERS_FPATH, index=False)
-    print(f'Orders dump was updated: {DUMP_ORDERS_FPATH}')
+    print(f'Orders dump was updated with {new_lines} new lines: {DUMP_ORDERS_FPATH}')
