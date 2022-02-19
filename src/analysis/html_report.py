@@ -4,6 +4,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
+from src.constants import remove_from_plots
 from src.data.dump_data import dump_orders_data, DATA_FOLDER
 from src.utils.utils import get_html_body_from_plotly_figure
 REPORT_FOLDER = DATA_FOLDER / 'html_reports'
@@ -31,7 +32,7 @@ def make_report(api_key, api_secret):
     mean_price['price_change_percent'] = mean_price['price_change_usd'] / mean_price['average_price'] * 100
 
     coins = mean_price['base_coin']
-    coins = [c for c in coins if c not in ['USDT']]
+    coins = [c for c in coins if c not in remove_from_plots]
     transactions_plots_dict = order_analyser.plot_transactions_many(coins)
     transactions_plots_html = ''
     for coin, fig in transactions_plots_dict.items():

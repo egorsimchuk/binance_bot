@@ -1,11 +1,17 @@
+from datetime import datetime
+from typing import Dict, Optional, List
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 from src.client.client import ClientHelper
+from src.constants import remove_from_plots
+from src.data.prices import get_prices
+from src.plot.asset_history import plot_asset_history
 
-QUOTE_COINS = ['USDT', 'BUSD']
+QUOTE_COINS = ['USDT', 'BUSD', 'RUB']
 
 
 class OrdersAnalyser:
@@ -34,8 +40,10 @@ class OrdersAnalyser:
         updated_orders = []
         for _, pair_orders in orders.groupby(['base_coin']):
             updated_orders.append(calculate_corrected_balance_for_pair(pair_orders))
-        updated_orders = pd.concat(updated_orders)
-        return updated_orders
+        orders = pd.concat(updated_orders)
+
+        assert np.all(np.isin(orders['quote_coin'].unique(), QUOTE_COINS)), f'Only {QUOTE_COINS} quote coins allowed'
+        return orders
 
     def calculate_mean_price(self):
         orders = self._orders
@@ -96,6 +104,42 @@ class OrdersAnalyser:
             fig_dict[base_coin] = fig
         return fig_dict
 
+    def prepare_coins_asset_history(self) -> Dict[str, pd.DataFrame]:
+        coins_asset_history = {}
+        prices = get_prices(self.client_helper)
+        for base_coin, pair_orders in self.orders.groupby('base_coin'):
+            if base_coin in remove_from_plots:
+                continue
+            price_history = prices[['date', base_coin]]
+            price_history.columns = ['date', 'price']
+            asset_history = calculate_asset_worth_history(pair_orders, price_history)
+            coins_asset_history[base_coin] = asset_history
+        return coins_asset_history
+
+    def plot_coins_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
+        if items is None:
+            items = coins_asset_history.keys()
+        for item in items:
+            plot_df = coins_asset_history[item]
+            fig = plot_asset_history(plot_df, title=f'{item} asset value history')
+            fig.show()
+
+    def plot_full_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
+        cash_df = []
+        coin_df = []
+        if items is None:
+            items = coins_asset_history.keys()
+        for item in items:
+            plot_df = coins_asset_history[item]
+            cash_df.append(plot_df[['date','usdt_cash_in_cum']].set_index('date'))
+            coin_df.append(plot_df[['date','coin_cum_usdt_value']].set_index('date'))
+        cash_df = pd.concat(cash_df, axis=1).ffill().sum(axis=1)
+        cash_df.name = 'usdt_cash_in_cum'
+        coin_df = pd.concat(coin_df, axis=1).ffill().sum(axis=1)
+        coin_df.name = 'coin_cum_usdt_value'
+        full_asset_history = pd.concat([cash_df, coin_df], axis=1).reset_index().ffill()
+        fig = plot_asset_history(full_asset_history, title='Full asset history')
+        fig.show()
 
 def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):
     assert len(pair_orders[
@@ -126,10 +170,52 @@ def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):
             if pair_orders.loc[mask_slice_buy, 'executedCorrectedQty'].sum() == 0:
                 raise ValueError(
                     "Bad balance error, looks like not all orders are listed. There are no coins available for selling")
+            # pair_orders.loc[mask_slice_buy, 'executedCorrectedQty'] -= pair_orders.loc[mask_slice_buy, 'usdtValueCorrection']/pair_orders.loc[mask_slice_buy, 'price']
             pair_orders.loc[mask_slice_buy, 'executedCorrectedQty'] *= 1 - pair_orders.loc[
                 mask_slice_buy, 'usdtValueCorrection'] / pair_orders.loc[mask_slice_buy, 'usdtValue']
     pair_orders = pair_orders.drop(['usdtValue', 'usdtValueCorrection', 'usdtQtyWeight'], axis=1)
     return pair_orders
+
+
+def calculate_asset_worth_history(pair_orders, price_history):
+    price_history = price_history.copy()
+    pair_orders = pair_orders.apply(calc_transfers, axis=1)
+    pair_orders['usdt_cash_in_cum'] = pair_orders['usdt_cash_transfer'].cumsum()
+    pair_orders['coin_cum'] = pair_orders['coin_transfer'].cumsum()
+
+    price_history.date = price_history.date.dt.to_period('D')
+
+    asset_history = pair_orders[['date', 'usdt_cash_in_cum', 'coin_cum']]
+    asset_history_last_row = asset_history.iloc[0].copy()
+    asset_history_last_row[:] = np.nan
+    asset_history_last_row['date'] = pd.Timestamp(datetime.today().strftime('%Y-%m-%d'))
+    asset_history = pd.concat([asset_history, asset_history_last_row.to_frame().T])
+
+    asset_history = asset_history.set_index('date').resample('D', label='right',
+                                                 closed='right').last().ffill().bfill().reset_index()
+
+    asset_history.date = asset_history.date.dt.to_period('D')
+    asset_history = pd.merge(asset_history, price_history, on='date', how='left')
+    asset_history['coin_cum_usdt_value'] = asset_history['coin_cum'] * asset_history['price']
+    asset_history.date = asset_history.date.dt.to_timestamp()
+    asset_history.date -= pd.Timedelta('1 day')
+
+    return asset_history
+
+
+def calc_transfers(row):
+    if row['side'] == 'BUY':
+        row['usdt_cash_in'] = row['cummulativeQuoteQty']
+        row['usdt_cash_out'] = np.nan
+        row['usdt_cash_transfer'] = row['cummulativeQuoteQty']
+        row['coin_transfer'] = row['executedQty']
+
+    else:
+        row['usdt_cash_in'] = np.nan
+        row['usdt_cash_out'] = row['cummulativeQuoteQty']
+        row['usdt_cash_transfer'] = -row['cummulativeQuoteQty']
+        row['coin_transfer'] = -row['executedQty']
+    return row
 
 
 class AssetAnalyser:
