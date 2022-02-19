@@ -30,6 +30,8 @@ def make_report(api_key, api_secret):
                           on=['base_coin', 'quote_coin'], how='left')
     mean_price['price_change_usd'] = mean_price['current_price'] - mean_price['average_price']
     mean_price['price_change_percent'] = mean_price['price_change_usd'] / mean_price['average_price'] * 100
+    history_assets = order_analyser.prepare_coins_asset_history()
+    asset_history_long_fig = order_analyser.plot_full_asset_history(history_assets)
 
     coins = mean_price['base_coin']
     coins = [c for c in coins if c not in remove_from_plots]
@@ -38,12 +40,12 @@ def make_report(api_key, api_secret):
     for coin, fig in transactions_plots_dict.items():
         transactions_plots_html += get_html_body_from_plotly_figure(fig)
 
-    generate_html_report(mean_price, portfolio_fig, asset_history_fig, transactions_plots_html)
+    generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_history_long_fig, transactions_plots_html)
     end = time.time()
     print(f'Executed for {round(end - start)} seconds')
 
 
-def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transactions_plots_html):
+def generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_history_long_fig, transactions_plots_html):
     now_datetime = datetime.now()
 
     mean_price_table = mean_price.round(3).to_html().replace('<table border="1" class="dataframe">',
@@ -61,6 +63,7 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, transacti
 
             <h2>Section 1: Asset composition</h2>
             ''' + get_html_body_from_plotly_figure(portfolio_fig) + '''
+            ''' + get_html_body_from_plotly_figure(asset_history_long_fig) + '''
             ''' + get_html_body_from_plotly_figure(asset_history_fig) + '''
             ''' + "" + '''
 

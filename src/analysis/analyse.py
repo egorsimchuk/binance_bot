@@ -117,12 +117,14 @@ class OrdersAnalyser:
         return coins_asset_history
 
     def plot_coins_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
+        fig_dict = {}
         if items is None:
             items = coins_asset_history.keys()
         for item in items:
             plot_df = coins_asset_history[item]
-            fig = plot_asset_history(plot_df, title=f'{item} asset value history')
-            fig.show()
+            fig = plot_asset_history(plot_df, title=f'{item} asset value history', width=self.width, height=self.height)
+            fig_dict[item] = fig
+        return fig_dict
 
     def plot_full_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
         cash_df = []
@@ -138,8 +140,8 @@ class OrdersAnalyser:
         coin_df = pd.concat(coin_df, axis=1).ffill().sum(axis=1)
         coin_df.name = 'coin_cum_usdt_value'
         full_asset_history = pd.concat([cash_df, coin_df], axis=1).reset_index().ffill()
-        fig = plot_asset_history(full_asset_history, title='Full asset history')
-        fig.show()
+        fig = plot_asset_history(full_asset_history, title='Full asset history', width=self.width, height=self.height)
+        return fig
 
 def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):
     assert len(pair_orders[

@@ -3,9 +3,9 @@ from binance.exceptions import BinanceAPIException
 
 from src.client.client import ClientHelper
 from src.data.dump_data import DUMP_PRICES_FPATH
+START_PRICES_DATE = '2017-01-01'
 
-
-def get_prices(client_helper: ClientHelper, start_date='1 Jan, 2021'):
+def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
     if DUMP_PRICES_FPATH.exists():
         price_history_old = pd.read_csv(DUMP_PRICES_FPATH, parse_dates=['date'])
         last_time = price_history_old.iloc[-1]['date'].strftime("%Y-%m-%d")
