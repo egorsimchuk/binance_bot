@@ -11,10 +11,14 @@ QUOTE_COINS = ['USDT', 'BUSD']
 class OrdersAnalyser:
 
     def __init__(self, client_helper, orders):
-        self.orders = self.prepare_dataframe(orders)
+        self._orders = self.prepare_dataframe(orders)
         self.client_helper = client_helper
         self.width = 1200
         self.height = 400
+
+    @property
+    def orders(self):
+        return self._orders
 
     @staticmethod
     def prepare_dataframe(orders: pd.DataFrame):
@@ -26,24 +30,30 @@ class OrdersAnalyser:
         orders = orders[orders['status'] == 'FILLED']
         # Replace payments with BUSD to USDT to simplify
         orders.loc[orders['quote_coin'] == 'BUSD', 'quote_coin'] = 'USDT'
-        return orders
+        # Calculate executedCorrectedQty, needed for calculation mean buying price
+        updated_orders = []
+        for _, pair_orders in orders.groupby(['base_coin']):
+            updated_orders.append(calculate_corrected_balance_for_pair(pair_orders))
+        updated_orders = pd.concat(updated_orders)
+        return updated_orders
 
-    def calculate_mean_price(self, side: str = 'BUY'):
-        orders = self.orders[self.orders['side'] == side]
+    def calculate_mean_price(self):
+        orders = self._orders
 
         average_prices = []
-        for base_coin, group in orders.groupby(['base_coin']):
-            quote_coin = group['quote_coin'].unique()
+        for base_coin, pair_orders in orders.groupby(['base_coin']):
+            quote_coin = pair_orders['quote_coin'].unique()
             if len(quote_coin) > 1:
                 msg = f'can calculate average purchase price only with single quote_coin, ' \
                       f'but for {base_coin} there is several: {quote_coin}'
                 raise ValueError(msg)
             quote_coin = quote_coin[0]
-            average_price = (group['price'] * group['executedQty']).sum() / group[
-                'executedQty'].sum()
+            mask_buy = pair_orders['side'] == 'BUY'
+            average_price = (pair_orders.loc[mask_buy, 'price'] * pair_orders.loc[
+                mask_buy, 'executedCorrectedQty']).sum() / pair_orders.loc[mask_buy, 'executedCorrectedQty'].sum()
             average_prices.append(
                 {'base_coin': base_coin, 'quote_coin': quote_coin, 'average_price': average_price,
-                 'n_purchases': len(group)})
+                 'n_purchases': mask_buy.sum(), 'n_sales': (~mask_buy).sum()})
         average_prices = pd.DataFrame(average_prices)
 
         return average_prices
@@ -64,7 +74,7 @@ class OrdersAnalyser:
             mean_price = self.calculate_mean_price()
             mean_price = mean_price.loc[mean_price['base_coin'] == base_coin, 'average_price'].item()
             fig.add_hline(y=mean_price, line_dash="dot",
-                          annotation_text=f'average purchase price = {round(mean_price, 1)} usdt',
+                          annotation_text=f'average purchase price = {round(mean_price, 2)} usdt',
                           annotation_position="bottom right")
 
         if add_last_price:
@@ -75,7 +85,7 @@ class OrdersAnalyser:
                 text=f"Last price = {round(last_price['Close'], 1)} usdt",
                 arrowhead=2,
             )
-        fig.update_layout(yaxis_title='USDT', width = self.width, height = self.height)
+        fig.update_layout(yaxis_title='USDT', width=self.width, height=self.height)
         return fig
 
     def plot_transactions_many(self, coins):
@@ -86,6 +96,40 @@ class OrdersAnalyser:
             fig_dict[base_coin] = fig
         return fig_dict
 
+
+def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):
+    assert len(pair_orders[
+                   'base_coin'].unique()) == 1, f'DataFrame should contain one base coin, but there are several: {pair_orders["base_coin"].unique()}'
+
+    pair_orders['executedCorrectedQty'] = pair_orders['executedQty']  # corrected coin quantity by selled tokens
+    pair_orders['usdtValue'] = np.nan  # usdt value of buyed tokens
+    pair_orders['usdtValueCorrection'] = np.nan  # delta correction usdt value of buyed tokens
+    pair_orders.loc[pair_orders['side'] == 'SELL', ['executedCorrectedQty', 'usdtValue']] = None
+    pair_orders['usdtQtyWeight'] = np.nan  # weights of buy orders in usdt terms
+    pair_orders = pair_orders.reset_index(drop=True)
+    cash_usdt_amount = 0
+    for i in range(len(pair_orders)):
+        mask_slice = pair_orders.index <= i
+        mask_buy = pair_orders['side'] == 'BUY'
+        mask_slice_buy = mask_slice & mask_buy
+        if pair_orders.loc[mask_slice, 'side'].iloc[-1] == 'SELL':
+            pair_orders.loc[mask_slice_buy, 'usdtValue'] = pair_orders.loc[mask_slice_buy, 'cummulativeQuoteQty'] * \
+                                                           pair_orders.loc[mask_slice, 'price'].iloc[-1] / \
+                                                           pair_orders.loc[mask_slice_buy, 'price']
+            pair_orders.loc[mask_slice_buy, 'usdtQtyWeight'] = pair_orders.loc[mask_slice_buy, 'usdtValue'] / \
+                                                               pair_orders.loc[mask_slice_buy, 'usdtValue'].sum()
+            sell_amount = pair_orders.loc[mask_slice, 'cummulativeQuoteQty'].iloc[-1]
+            pair_orders.loc[mask_slice_buy, 'usdtValueCorrection'] = sell_amount * pair_orders.loc[
+                mask_slice_buy, 'usdtQtyWeight']
+            cash_usdt_amount += sell_amount
+            # Reduce corrected coin quantity with ratio of decreased usdtValue from sell order
+            if pair_orders.loc[mask_slice_buy, 'executedCorrectedQty'].sum() == 0:
+                raise ValueError(
+                    "Bad balance error, looks like not all orders are listed. There are no coins available for selling")
+            pair_orders.loc[mask_slice_buy, 'executedCorrectedQty'] *= 1 - pair_orders.loc[
+                mask_slice_buy, 'usdtValueCorrection'] / pair_orders.loc[mask_slice_buy, 'usdtValue']
+    pair_orders = pair_orders.drop(['usdtValue', 'usdtValueCorrection', 'usdtQtyWeight'], axis=1)
+    return pair_orders
 
 
 class AssetAnalyser:
