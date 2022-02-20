@@ -1,3 +1,5 @@
+import webbrowser
+
 from src.analysis.analyse import AssetAnalyser, OrdersAnalyser
 from src.client.client import ClientHelper
 import pandas as pd
@@ -9,7 +11,7 @@ from src.data.dump_data import dump_orders_data, DATA_FOLDER
 from src.utils.utils import get_html_body_from_plotly_figure
 REPORT_FOLDER = DATA_FOLDER / 'html_reports'
 
-def make_report(api_key, api_secret):
+def make_report(api_key: str, api_secret: str, open_file: bool):
     start = time.time()
 
     client_helper = ClientHelper(api_key, api_secret)
@@ -19,7 +21,6 @@ def make_report(api_key, api_secret):
     asset_analyser = AssetAnalyser(client_helper)
 
     portfolio_fig = asset_analyser.plot_asset_composition_in_usdt(history_assets, current_prices)
-    asset_history_fig = asset_analyser.plot_asset_usdt_value_history(history_assets)
 
     orders = client_helper.get_all_orders()
     dump_orders_data(orders)
@@ -40,12 +41,12 @@ def make_report(api_key, api_secret):
     for coin, fig in transactions_plots_dict.items():
         transactions_plots_html += get_html_body_from_plotly_figure(fig)
 
-    generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_history_long_fig, transactions_plots_html)
+    generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
     end = time.time()
     print(f'Executed for {round(end - start)} seconds')
 
 
-def generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_history_long_fig, transactions_plots_html):
+def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=False):
     now_datetime = datetime.now()
 
     mean_price_table = mean_price.round(3).to_html().replace('<table border="1" class="dataframe">',
@@ -64,7 +65,6 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_his
             <h2>Section 1: Asset composition</h2>
             ''' + get_html_body_from_plotly_figure(portfolio_fig) + '''
             ''' + get_html_body_from_plotly_figure(asset_history_long_fig) + '''
-            ''' + get_html_body_from_plotly_figure(asset_history_fig) + '''
             ''' + "" + '''
 
             <h2>Section 2: Analysis of purchases</h2>
@@ -84,3 +84,7 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_fig, asset_his
     f.write(html_string)
     f.close()
     print(f'Report was saved at: {fpath}')
+
+    if open_file:
+        url = "file:///" + str(fpath)
+        webbrowser.open(url, new=2)

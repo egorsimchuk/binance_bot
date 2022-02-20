@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 
 from src.client.client import ClientHelper
 from src.constants import remove_from_plots
-from src.data.prices import get_prices
+from src.data.prices import get_prices, round_price
 from src.plot.asset_history import plot_asset_history
 
 QUOTE_COINS = ['USDT', 'BUSD', 'RUB']
@@ -82,7 +82,7 @@ class OrdersAnalyser:
             mean_price = self.calculate_mean_price()
             mean_price = mean_price.loc[mean_price['base_coin'] == base_coin, 'average_price'].item()
             fig.add_hline(y=mean_price, line_dash="dot",
-                          annotation_text=f'average purchase price = {round(mean_price, 2)} usdt',
+                          annotation_text=f'average purchase price = {round_price(mean_price)} usdt',
                           annotation_position="bottom right")
 
         if add_last_price:
@@ -90,7 +90,7 @@ class OrdersAnalyser:
             fig.add_annotation(
                 x=last_price['date'],
                 y=last_price['Close'],
-                text=f"Last price = {round(last_price['Close'], 1)} usdt",
+                text=f"Last price = {round_price(last_price['Close'])} usdt",
                 arrowhead=2,
             )
         fig.update_layout(yaxis_title='USDT', width=self.width, height=self.height)
@@ -140,7 +140,7 @@ class OrdersAnalyser:
         coin_df = pd.concat(coin_df, axis=1).ffill().sum(axis=1)
         coin_df.name = 'coin_cum_usdt_value'
         full_asset_history = pd.concat([cash_df, coin_df], axis=1).reset_index().ffill()
-        fig = plot_asset_history(full_asset_history, title='Full asset history', width=self.width, height=self.height)
+        fig = plot_asset_history(full_asset_history, title='Asset usdt value history', width=self.width, height=self.height)
         return fig
 
 def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):

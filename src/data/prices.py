@@ -32,3 +32,12 @@ def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
     price_history_new.to_csv(DUMP_PRICES_FPATH, index=False)
     print(f'Prices dump was updated with {new_lines} new lines (days): {DUMP_PRICES_FPATH}')
     return price_history_new
+
+def round_price(value: float) -> float:
+    if value>100:
+        ndigits = 1
+    elif value>1:
+        ndigits = 2
+    else:
+        ndigits = 4
+    return round(value, ndigits)

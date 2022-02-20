@@ -39,8 +39,7 @@ def calc_report(df):
         [groups['amount'].sum(), groups['price'].mean(), groups['total'].sum()],
         axis=1).reset_index()
     mean_info.columns = ['coin', 'coin_amount', 'mean_price', 'usd_spent']
-    mean_info['percentage'] = (mean_info['usd_spent'] / mean_info['usd_spent'].sum() * 100).round(
-        1)
+    mean_info['percentage'] = (mean_info['usd_spent'] / mean_info['usd_spent'].sum() * 100).round(1)
     print(mean_info)
     mean_info.to_csv(fname, index=False)
     print(f'report saved: {fname}')
