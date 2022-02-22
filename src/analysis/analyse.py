@@ -6,10 +6,13 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from src.client.client import ClientHelper
 from src.constants import remove_from_plots
 from src.data.prices import get_prices, round_price
 from src.plot.asset_history import plot_asset_history
+import logging
+from src.utils.logging import log_format
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 QUOTE_COINS = ['USDT', 'BUSD', 'RUB']
 
@@ -246,7 +249,7 @@ class AssetAnalyser:
             try:
                 price = prices.loc[prices['base_coin'] == coin, 'price'].item()
             except ValueError:
-                print(f'{coin} coin is not listed in binance, price is not available')
+                logger.info(f'{coin} coin is not listed in binance, price is not available')
             values[i] *= price
         fig = go.Figure(data=[go.Pie(labels=labels, values=values.round(), textinfo='label', )])
         fig.update_layout(title=f'Asset composition in usdt. Total value = {np.sum(values).round(1)} usdt.',

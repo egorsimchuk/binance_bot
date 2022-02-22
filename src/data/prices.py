@@ -3,6 +3,11 @@ from binance.exceptions import BinanceAPIException
 
 from src.client.client import ClientHelper
 from src.data.dump_data import DUMP_PRICES_FPATH
+import logging
+from src.utils.logging import log_format
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 START_PRICES_DATE = '2017-01-01'
 
 def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
@@ -21,7 +26,7 @@ def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
             price_history.columns = [base_coin]
             price_history_new.append(price_history)
         except BinanceAPIException:
-            print(f'Can not get prices for {base_coin}')
+            logger.info(f'Can not get prices for {base_coin}')
 
     price_history_new = pd.concat(price_history_new, axis=1).reset_index()
     new_lines = len(price_history_new)
@@ -30,7 +35,7 @@ def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
         price_history_new = pd.concat([price_history_old.iloc[:-1], price_history_new])
 
     price_history_new.to_csv(DUMP_PRICES_FPATH, index=False)
-    print(f'Prices dump was updated with {new_lines} new lines (days): {DUMP_PRICES_FPATH}')
+    logger.info(f'Prices dump was updated with {new_lines} new lines (days): {DUMP_PRICES_FPATH}')
     return price_history_new
 
 def round_price(value: float) -> float:

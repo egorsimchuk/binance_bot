@@ -8,6 +8,10 @@ from src.utils.utils import load_config_json, convert_timestamp_to_datetime, cas
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
+import logging
+from src.utils.logging import log_format
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 MAX_ORDERS = 1000
 PROCESSES_NUMBER = 15
@@ -92,7 +96,7 @@ class ClientHelper:
         batch_size = len(currency_combinations) // n_batches
         orders_lists = []
         for i in range(n_batches + 1):
-            print('Avoid APIError(code=-1003), batch', i)
+            logger.info(f'Avoid APIError(code=-1003), batch {i}')
             while True:
                 try:
                     with ThreadPool(PROCESSES_NUMBER) as pool:
@@ -100,7 +104,7 @@ class ClientHelper:
                             pool.map(self.query_pair_orders, currency_combinations[i * batch_size:i * batch_size + batch_size]))
                     break
                 except BinanceAPIException:
-                    print('Avoid APIError(code=-1003), sleep extra 60 seconds')
+                    logger.info('Avoid APIError(code=-1003), sleep extra 60 seconds')
                     sleep(60)
                     pass
             sleep(10)

@@ -9,6 +9,11 @@ from datetime import datetime
 from src.constants import remove_from_plots
 from src.data.dump_data import dump_orders_data, DATA_FOLDER
 from src.utils.utils import get_html_body_from_plotly_figure
+import logging
+from src.utils.logging import log_format
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 REPORT_FOLDER = DATA_FOLDER / 'html_reports'
 
 def make_report(api_key: str, api_secret: str, open_file: bool):
@@ -41,9 +46,11 @@ def make_report(api_key: str, api_secret: str, open_file: bool):
     for coin, fig in transactions_plots_dict.items():
         transactions_plots_html += get_html_body_from_plotly_figure(fig)
 
-    generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
+    fpath = generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
     end = time.time()
-    print(f'Executed for {round(end - start)} seconds')
+    logger.info(f'HTML report executed for {round(end - start)} seconds')
+
+    return fpath
 
 
 def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=False):
@@ -83,8 +90,10 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, tran
     f = open(fpath, 'w')
     f.write(html_string)
     f.close()
-    print(f'Report was saved at: {fpath}')
+    logger.info(f'Report was saved at: {fpath}')
 
     if open_file:
         url = "file:///" + str(fpath)
         webbrowser.open(url, new=2)
+
+    return fpath

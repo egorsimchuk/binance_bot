@@ -1,7 +1,10 @@
 import pandas as pd
 from pathlib import Path
 from src.utils.utils import cast_all_to_float
-
+import logging
+from src.utils.logging import log_format
+logging.basicConfig(format=log_format, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def update_history(df):
     fpath = Path('long_binance_history.csv')
@@ -12,7 +15,7 @@ def update_history(df):
     else:
         new_df = df
     new_df.to_csv(fpath, index=False)
-    print(f'{fpath} was updated')
+    logger.info(f'{fpath} was updated')
     return new_df
 
 
@@ -40,9 +43,9 @@ def calc_report(df):
         axis=1).reset_index()
     mean_info.columns = ['coin', 'coin_amount', 'mean_price', 'usd_spent']
     mean_info['percentage'] = (mean_info['usd_spent'] / mean_info['usd_spent'].sum() * 100).round(1)
-    print(mean_info)
+    logger.info(mean_info)
     mean_info.to_csv(fname, index=False)
-    print(f'report saved: {fname}')
+    logger.info(f'report saved: {fname}')
 
 
 def main():
