@@ -17,3 +17,5 @@ Run script inside binance_bot folder:
 ```bash
 python -m scripts.make_html_report <api_key> <api_secret>
 ```
+###Use interactive graphs in generated HTML report:
+![image](https://user-images.githubusercontent.com/18515081/156665580-42554d0b-ab9a-4d97-8325-b55a006c311c.png)
