@@ -1,6 +1,6 @@
 import webbrowser
 
-from src.analysis.analyse import AssetAnalyser, OrdersAnalyser
+from src.analysis.analyse import AssetAnalyser, OrdersAnalyser, generate_asset_table
 from src.client.client import ClientHelper
 import pandas as pd
 import time
@@ -18,35 +18,29 @@ REPORT_FOLDER = DATA_FOLDER / 'html_reports'
 
 def make_report(api_key: str, api_secret: str, open_file: bool):
     start = time.time()
-
     client_helper = ClientHelper(api_key, api_secret)
-
     current_prices = client_helper.query_prices()
-    history_assets = client_helper.get_history_assets('SPOT')
-    asset_analyser = AssetAnalyser(client_helper)
-
-    portfolio_fig = asset_analyser.plot_asset_composition_in_usdt(history_assets, current_prices)
 
     orders = client_helper.get_all_orders()
     dump_orders_data(orders)
 
     order_analyser = OrdersAnalyser(client_helper, orders)
-    mean_price = order_analyser.calculate_mean_price()
-    mean_price = pd.merge(mean_price, current_prices.rename(columns={'price': 'current_price'}),
-                          on=['base_coin', 'quote_coin'], how='left')
-    mean_price['price_change_usd'] = mean_price['current_price'] - mean_price['average_price']
-    mean_price['price_change_percent'] = mean_price['price_change_usd'] / mean_price['average_price'] * 100
+
+    portfolio_fig = order_analyser.plot_asset_usdt_composition(current_prices)
+
+    asset_df = generate_asset_table(order_analyser, current_prices)
+
     history_assets = order_analyser.prepare_coins_asset_history()
     asset_history_long_fig = order_analyser.plot_full_asset_history(history_assets)
 
-    coins = mean_price['base_coin']
+    coins = asset_df['base_coin']
     coins = [c for c in coins if c not in remove_from_plots]
     transactions_plots_dict = order_analyser.plot_transactions_many(coins)
     transactions_plots_html = ''
     for coin, fig in transactions_plots_dict.items():
         transactions_plots_html += get_html_body_from_plotly_figure(fig)
 
-    fpath = generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
+    fpath = generate_html_report(asset_df, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
     end = time.time()
     logger.info(f'HTML report executed for {round(end - start)} seconds')
 

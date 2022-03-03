@@ -11,6 +11,7 @@ from src.data.prices import get_prices, round_price
 from src.plot.asset_history import plot_asset_history
 import logging
 from src.utils.logging import log_format
+
 logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,21 @@ class OrdersAnalyser:
                 text=f"Last price = {round_price(last_price['Close'])} usdt",
                 arrowhead=2,
             )
-        fig.update_layout(yaxis_title='USDT', width=self.width, height=self.height)
+        fig.update_xaxes(
+            rangeslider_visible=True,
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1m", step="month", stepmode="backward"),
+                    dict(count=6, label="6m", step="month", stepmode="backward"),
+                    dict(count=1, label="1y", step="year", stepmode="backward"),
+                    dict(step="all"),
+                ])
+            ),
+            type='date'
+        )
+        fig.update_layout(yaxis_title='USDT', width=self.width, height=self.height, xaxis_fixedrange=False,
+                          yaxis_fixedrange=False)
+
         return fig
 
     def plot_transactions_many(self, coins):
@@ -119,7 +134,7 @@ class OrdersAnalyser:
             coins_asset_history[base_coin] = asset_history
         return coins_asset_history
 
-    def plot_coins_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
+    def plot_coins_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List] = None):
         fig_dict = {}
         if items is None:
             items = coins_asset_history.keys()
@@ -129,22 +144,71 @@ class OrdersAnalyser:
             fig_dict[item] = fig
         return fig_dict
 
-    def plot_full_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List]=None):
+    def plot_full_asset_history(self, coins_asset_history: Dict[str, pd.DataFrame], items: Optional[List] = None):
         cash_df = []
         coin_df = []
         if items is None:
             items = coins_asset_history.keys()
         for item in items:
             plot_df = coins_asset_history[item]
-            cash_df.append(plot_df[['date','usdt_cash_in_cum']].set_index('date'))
-            coin_df.append(plot_df[['date','coin_cum_usdt_value']].set_index('date'))
+            cash_df.append(plot_df[['date', 'usdt_cash_in_cum']].set_index('date'))
+            coin_df.append(plot_df[['date', 'coin_cum_usdt_value']].set_index('date'))
         cash_df = pd.concat(cash_df, axis=1).ffill().sum(axis=1)
         cash_df.name = 'usdt_cash_in_cum'
         coin_df = pd.concat(coin_df, axis=1).ffill().sum(axis=1)
         coin_df.name = 'coin_cum_usdt_value'
         full_asset_history = pd.concat([cash_df, coin_df], axis=1).reset_index().ffill()
-        fig = plot_asset_history(full_asset_history, title='Asset usdt value history', width=self.width, height=self.height)
+        fig = plot_asset_history(full_asset_history, title='Asset usdt value history', width=self.width,
+                                 height=self.height)
         return fig
+
+    def asset_usdt_composition(self, prices: pd.DataFrame):
+        asset_df = self._orders[self._orders['side'] == 'BUY'].groupby('base_coin')[
+            'executedCorrectedQty'].sum().reset_index()
+
+        def convert_to_usd_price(raw, ):
+            try:
+                return raw['executedCorrectedQty'] * prices.loc[prices['base_coin'] == raw['base_coin'], 'price'].item()
+            except ValueError:
+                logger.info(f'{raw["base_coin"]} coin is not listed in binance, price is not available')
+                return None
+
+        asset_df['usdt_value'] = asset_df.apply(convert_to_usd_price, axis=1)
+        asset_df = asset_df[asset_df['base_coin'] != 'USDT']
+        return asset_df
+
+    def plot_asset_usdt_composition(self, prices: pd.DataFrame):
+        """
+         Plot the most actual composition of asset in usdt.
+
+         Args:
+             history_assets: Table with columns ['type', 'date', 'totalAssetOfBtc', all coins in asset].
+             prices: Table with columns ['price', 'base_coin', 'quote_coin'].
+
+         Returns:
+
+         """
+        plot_df = self.asset_usdt_composition(prices)
+        fig = px.pie(plot_df, values='usdt_value', names='base_coin')
+        fig.update_layout(
+            title=f'Asset composition in usdt. Total value = {plot_df["usdt_value"].sum().round(1)} usdt.',
+            autosize=False, width=500, height=500)
+        return fig
+
+
+def generate_asset_table(order_analyser: OrdersAnalyser, current_prices: pd.DataFrame) -> pd.DataFrame:
+    asset_df = order_analyser.calculate_mean_price()
+
+    asset_df = pd.merge(asset_df, current_prices.rename(columns={'price': 'current_price'}),
+                        on=['base_coin', 'quote_coin'], how='left')
+    asset_df['price_change_usd'] = asset_df['current_price'] - asset_df['average_price']
+    asset_df['price_change_percent'] = asset_df['price_change_usd'] / asset_df['average_price'] * 100
+
+    asset_df = pd.merge(asset_df, order_analyser.asset_usdt_composition(current_prices), how='outer', on='base_coin')
+    asset_df = asset_df.rename(columns={'executedCorrectedQty': 'coins_count'})
+    asset_df['usdt_share_percent'] = asset_df['usdt_value'] / asset_df['usdt_value'].sum() * 100
+    return asset_df.sort_values('usdt_share_percent', ascending=False).reset_index(drop=True)
+
 
 def calculate_corrected_balance_for_pair(pair_orders: pd.DataFrame):
     assert len(pair_orders[
@@ -197,7 +261,7 @@ def calculate_asset_worth_history(pair_orders, price_history):
     asset_history = pd.concat([asset_history, asset_history_last_row.to_frame().T])
 
     asset_history = asset_history.set_index('date').resample('D', label='right',
-                                                 closed='right').last().ffill().bfill().reset_index()
+                                                             closed='right').last().ffill().bfill().reset_index()
 
     asset_history.date = asset_history.date.dt.to_period('D')
     asset_history = pd.merge(asset_history, price_history, on='date', how='left')
