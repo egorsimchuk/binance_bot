@@ -103,7 +103,8 @@ class ClientHelper:
                         orders_lists.extend(
                             pool.map(self.query_pair_orders, currency_combinations[i * batch_size:i * batch_size + batch_size]))
                     break
-                except BinanceAPIException:
+                except BinanceAPIException as ex:
+                    logger.warning(ex.message)
                     logger.info('Avoid APIError(code=-1003), sleep extra 60 seconds')
                     sleep(60)
                     pass
