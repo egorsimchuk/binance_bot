@@ -9,8 +9,6 @@ import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
 import logging
-from src.utils.logging import log_format
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MAX_ORDERS = 1000

@@ -2,8 +2,6 @@ import pandas as pd
 
 from src.utils.utils import get_project_dir
 import logging
-from src.utils.logging import log_format
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DATA_FOLDER = get_project_dir() / 'data'

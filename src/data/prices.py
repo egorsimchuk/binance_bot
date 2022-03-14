@@ -4,8 +4,6 @@ from binance.exceptions import BinanceAPIException
 from src.client.client import ClientHelper
 from src.data.dump_data import DUMP_PRICES_FPATH
 import logging
-from src.utils.logging import log_format
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 START_PRICES_DATE = '2017-01-01'

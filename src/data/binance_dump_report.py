@@ -2,8 +2,6 @@ import pandas as pd
 from pathlib import Path
 from src.utils.utils import cast_all_to_float
 import logging
-from src.utils.logging import log_format
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def update_history(df):
