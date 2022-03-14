@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:14.2-alpine
+    restart: always
+    ports:
+      - "3303:3303"
+    volumes:
+      - ~/data/postgres_db:/opt/data
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: /opt/data
+    logging:
+      options:
+        max-size: 10m
