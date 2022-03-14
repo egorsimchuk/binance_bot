@@ -10,9 +10,6 @@ from src.constants import remove_from_plots
 from src.data.prices import get_prices, round_price
 from src.plot.asset_history import plot_asset_history
 import logging
-from src.utils.logging import log_format
-
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 QUOTE_COINS = ['USDT', 'BUSD', 'RUB']

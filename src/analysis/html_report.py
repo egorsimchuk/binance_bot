@@ -10,8 +10,6 @@ from src.constants import remove_from_plots
 from src.data.dump_data import dump_orders_data, DATA_FOLDER
 from src.utils.utils import get_html_body_from_plotly_figure
 import logging
-from src.utils.logging import log_format
-logging.basicConfig(format=log_format, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 REPORT_FOLDER = DATA_FOLDER / 'html_reports'
