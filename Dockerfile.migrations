@@ -1,0 +1,4 @@
+FROM flyway/flyway:8.5.3
+WORKDIR /opt/db_migrations
+
+COPY ./db_migrations .
