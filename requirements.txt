@@ -5,3 +5,5 @@ python-binance>=1.0.15
 kaleido>=0.2.1
 python-telegram-bot
 aiogram
+SQLAlchemy
+psycopg2-binary

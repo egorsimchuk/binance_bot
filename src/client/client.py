@@ -31,6 +31,7 @@ class ClientHelper:
             raise err
         query_config = load_config_json('config/query.json')
         self.currency_items = query_config['orders_history']['currency_items']
+        logger.info(f'fetching coins: {self.currency_items}')
 
     def query_pair_orders(self, currency_pair: list) -> Optional[List[Any]]:
         """
