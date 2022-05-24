@@ -1,20 +1,17 @@
 from time import sleep
 from typing import Optional, Any, List
-
 from binance.exceptions import BinanceAPIException
 from binance import Client
-
 from src.utils.utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
 import pandas as pd
 import itertools
 from multiprocessing.dummy import Pool as ThreadPool
 import logging
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 MAX_ORDERS = 1000
 PROCESSES_NUMBER = 15
 RECV_WINDOW = 5000
-
 KLINES_COLUMNS = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
                   'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Can be ignored']
 
@@ -22,6 +19,7 @@ KLINES_COLUMNS = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close 
 class ClientHelper:
 
     def __init__(self, api_key: str, api_secret: str):
+        self.client: Client = None
         try:
             self.client = Client(api_key, api_secret)
         except BinanceAPIException as err:
@@ -30,8 +28,16 @@ class ClientHelper:
                 # raise err(f'IP blocked until {convert_timestamp_to_datetime}')
             raise err
         query_config = load_config_json('config/query.json')
-        self.currency_items = query_config['orders_history']['currency_items']
+        self._currency_items = query_config['orders_history']['currency_items']
         logger.info(f'fetching coins: {self.currency_items}')
+
+    @property
+    def currency_items(self):
+        return self._currency_items
+
+    @currency_items.setter
+    def currency_items(self, value):
+        self._currency_items = value
 
     def query_pair_orders(self, currency_pair: list) -> Optional[List[Any]]:
         """
@@ -58,7 +64,6 @@ class ClientHelper:
             raise e
 
         orders = self._fill_price_for_market_price_transaction(orders)
-
         return orders
 
     def _fill_price_for_market_price_transaction(self, orders: Optional[List[Any]]) -> Optional[List[Any]]:
@@ -72,7 +77,7 @@ class ClientHelper:
 
         return orders
 
-    def get_all_orders(self, currency_items: list = None, divide_coin_convertion=True) -> pd.DataFrame:
+    def load_orders(self):
         """
         Query history of orders for all possible combinations of currency pairs.
 
@@ -80,21 +85,15 @@ class ClientHelper:
             currency_items: List of currencies for fetching.
                 All possible pairs generated from that list.
                 If None then default use currency_items from configs.
-            divide_coin_convertion: Convert each coin-to-coin operation into 2 usdt operations - one for selling and
-                                    another for buying for usdt.
-
         Returns:
-            Pandas DataFrame with history of orders.
-
+            DataFrame with orders details
         """
-        if currency_items is None:
-            currency_items = self.currency_items
-        currency_combinations = list(itertools.permutations(currency_items, 2))
+        currency_combinations = list(itertools.permutations(self.currency_items, 2))
         # bypass protection. Avoid APIError(code=-1003): Too much request weight used
         n_batches = 3
         batch_size = len(currency_combinations) // n_batches
         orders_lists = []
-        for i in range(n_batches + 1):
+        for i in range(1):
             logger.info(f'Avoid APIError(code=-1003), batch {i}')
             while True:
                 try:
@@ -111,56 +110,7 @@ class ClientHelper:
 
         orders_lists = [o for o in orders_lists if o is not None]
         orders = list(itertools.chain.from_iterable(orders_lists))
-        orders = pd.DataFrame(orders)
-        cast_all_to_float(orders, except_columns=['time', 'updateTime'])
-
-        if divide_coin_convertion:
-            orders = self.divide_coin_convertion_into_usdt_operations(orders)
-
-        if len(orders) > 0:
-            orders['date'] = orders['time'].apply(convert_timestamp_to_datetime)
-            orders = orders.sort_values('date').reset_index(drop=True)
-
-        return orders
-
-    def divide_coin_convertion_into_usdt_operations(self, orders: pd.DataFrame, allowed_quote_coins: List[str] = None):
-        if allowed_quote_coins is None:
-            allowed_quote_coins = ['USDT', 'BUSD', 'RUB']
-        transaction_coin = 'USDT'
-        pair_mask = orders['quote_coin'].isin(allowed_quote_coins)
-        ok_orders = orders[pair_mask]
-        div_orders = orders[~pair_mask]
-        divided_orders = []
-
-        for i, row in div_orders.iterrows():
-            time = row['updateTime']
-            sell_row = row.copy()
-            sell_symbol = row['quote_coin'] + transaction_coin
-            candle = self.client.get_aggregate_trades(symbol=sell_symbol, startTime=time, endTime=time + 1000, limit=1)[
-                0]
-            sell_row['symbol'] = sell_symbol
-            sell_row['side'] = 'SELL'
-            sell_row['price'] = float(candle['p'])
-            sell_row['base_coin'] = row['quote_coin']
-            sell_row['quote_coin'] = transaction_coin
-            sell_row['cummulativeQuoteQty'] = row['cummulativeQuoteQty'] * sell_row['price']
-            sell_row['origQty'] = row['cummulativeQuoteQty']
-            sell_row['executedQty'] = row['cummulativeQuoteQty']
-
-            buy_row = row.copy()
-            buy_symbol = row['base_coin'] + transaction_coin
-            candle = self.client.get_aggregate_trades(symbol=buy_symbol, startTime=time, endTime=time + 1000, limit=1)[
-                0]
-            buy_row['symbol'] = buy_symbol
-            buy_row['price'] = float(candle['p'])
-            buy_row['quote_coin'] = transaction_coin
-            buy_row['cummulativeQuoteQty'] = row['executedQty'] * buy_row['price']
-
-            divided_orders.append(sell_row)
-            divided_orders.append(buy_row)
-        divided_orders = pd.DataFrame(divided_orders)
-        orders = pd.concat([ok_orders, divided_orders])
-        return orders
+        return pd.DataFrame(orders)
 
     def query_asset(self, currency):
         """
@@ -168,22 +118,15 @@ class ClientHelper:
         """
         return self.client.get_asset_balance(asset=currency)
 
-    def get_all_assets(self, currency_items: list = None) -> pd.DataFrame:
+    def get_all_assets(self) -> pd.DataFrame:
         """
         Query assets for selected currencies.
-
-        Args:
-            currency_items: list of currencies for fetching.
-
         Returns:
             Pandas DataFrame with assets.
 
         """
-        if currency_items is None:
-            currency_items = self.currency_items
-
         with ThreadPool(PROCESSES_NUMBER) as pool:
-            assets = pool.map(self.query_asset, currency_items)
+            assets = pool.map(self.query_asset, self.currency_items)
 
         assets = [o for o in assets if len(o) > 0]
 

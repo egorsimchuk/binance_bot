@@ -8,6 +8,8 @@ from datetime import datetime
 
 from src.constants import remove_from_plots
 from src.data.dump_data import dump_orders_data, DATA_FOLDER
+from src.data.orders_handler import OrdersHandler
+from src.data.preprocessing.orders import OrdersProcessor
 from src.utils.utils import get_html_body_from_plotly_figure
 import logging
 logger = logging.getLogger(__name__)
@@ -19,7 +21,8 @@ def make_report(api_key: str, api_secret: str, open_file: bool):
     client_helper = ClientHelper(api_key, api_secret)
     current_prices = client_helper.query_prices()
 
-    orders = client_helper.get_all_orders()
+    orders_handler = OrdersHandler(client_helper=client_helper, data_processor=OrdersProcessor())
+    orders = orders_handler.load()
     dump_orders_data(orders)
 
     order_analyser = OrdersAnalyser(client_helper, orders)
