@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from binance.exceptions import BinanceAPIException
 from binance import Client
 from src.utils.utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
@@ -39,7 +39,7 @@ class ClientHelper:
     def currency_items(self, value):
         self._currency_items = value
 
-    def query_pair_orders(self, currency_pair: list) -> Optional[List[Any]]:
+    def _query_pair_orders(self, currency_pair: list) -> Optional[List[Any]]:
         """
         Query history of orders for currency pair
         Args:
@@ -73,7 +73,7 @@ class ClientHelper:
         for i in range(len(orders)):
             order = orders[i]
             if order['type'] == 'MARKET':
-                order['price'] = self.get_timestamp_price(order['symbol'], order['time'])
+                order['price'] = self._get_timestamp_price(order['symbol'], order['time'])
 
         return orders
 
@@ -93,13 +93,13 @@ class ClientHelper:
         n_batches = 3
         batch_size = len(currency_combinations) // n_batches
         orders_lists = []
-        for i in range(1):
+        for i in range(n_batches + 1):
             logger.info(f'Avoid APIError(code=-1003), batch {i}')
             while True:
                 try:
                     with ThreadPool(PROCESSES_NUMBER) as pool:
                         orders_lists.extend(
-                            pool.map(self.query_pair_orders, currency_combinations[i * batch_size:i * batch_size + batch_size]))
+                            pool.map(self._query_pair_orders, currency_combinations[i * batch_size:i * batch_size + batch_size]))
                     break
                 except BinanceAPIException as ex:
                     logger.warning(ex.message)
@@ -112,7 +112,7 @@ class ClientHelper:
         orders = list(itertools.chain.from_iterable(orders_lists))
         return pd.DataFrame(orders)
 
-    def query_asset(self, currency):
+    def _query_asset(self, currency):
         """
         Query asset for selected currency.
         """
@@ -126,7 +126,7 @@ class ClientHelper:
 
         """
         with ThreadPool(PROCESSES_NUMBER) as pool:
-            assets = pool.map(self.query_asset, self.currency_items)
+            assets = pool.map(self._query_asset, self.currency_items)
 
         assets = [o for o in assets if len(o) > 0]
 
@@ -165,7 +165,7 @@ class ClientHelper:
 
         return balances
 
-    def get_timestamp_price(self, coin_pair, timestamp):
+    def _get_timestamp_price(self, coin_pair, timestamp):
         data = self.client.get_historical_klines(coin_pair, Client.KLINE_INTERVAL_1MINUTE, start_str=timestamp,
                                                  end_str=int(timestamp + 60 * 1e3))
         data = dict(zip(KLINES_COLUMNS, data[0]))
@@ -194,3 +194,14 @@ class ClientHelper:
         prices['price'] = prices['price'].astype(float)
         prices = pd.concat([prices, pd.DataFrame([{'price': 1, 'base_coin': 'USDT', 'quote_coin': 'USDT'}])])
         return prices
+
+    def get_aggregate_trades(self, symbol: str, time: int) -> Dict[str, Any]:
+        window_ms = 1000  # aggregate trades in 1 second window for a start
+        while True:
+            try:
+                return self.client.get_aggregate_trades(symbol=symbol, startTime=time, endTime=time + window_ms, limit=1)[0]
+            except IndexError:
+                window_ms *= 2  # double the window size if no trades are found
+                if window_ms > 300000:
+                    logger.warning(f"Windows size exceed 5 minutes in get_candle")
+                continue

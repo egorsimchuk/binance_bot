@@ -8,7 +8,7 @@ from datetime import datetime
 
 from src.constants import remove_from_plots
 from src.data.dump_data import dump_orders_data, DATA_FOLDER
-from src.data.orders_handler import OrdersHandler
+from src.data.orders_handler import load_and_process
 from src.data.preprocessing.orders import OrdersProcessor
 from src.utils.utils import get_html_body_from_plotly_figure
 import logging
@@ -21,8 +21,8 @@ def make_report(api_key: str, api_secret: str, open_file: bool):
     client_helper = ClientHelper(api_key, api_secret)
     current_prices = client_helper.query_prices()
 
-    orders_handler = OrdersHandler(client_helper=client_helper, data_processor=OrdersProcessor())
-    orders = orders_handler.load()
+    orders_processor = OrdersProcessor(client_helper=client_helper)
+    orders = load_and_process(client_helper, orders_processor)
     dump_orders_data(orders)
 
     order_analyser = OrdersAnalyser(client_helper, orders)
@@ -82,9 +82,8 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, tran
     now_time = now_datetime.strftime('%Y-%m-%d_%Hh%Mm')
     REPORT_FOLDER.mkdir(exist_ok=True, parents=True)
     fpath = REPORT_FOLDER / f'{now_time}.html'
-    f = open(fpath, 'w')
-    f.write(html_string)
-    f.close()
+    with open(fpath, 'w') as f:
+        f.write(html_string)
     logger.info(f'Report was saved at: {fpath}')
 
     if open_file:

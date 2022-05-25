@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 START_PRICES_DATE = '2017-01-01'
+COINS_PRICE_MATCHES = {'BETH':'ETH'}
 
 def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
     if DUMP_PRICES_FPATH.exists():
@@ -19,7 +20,8 @@ def get_prices(client_helper: ClientHelper, start_date=START_PRICES_DATE):
 
     for base_coin in currency_items:
         try:
-            price_history = client_helper.get_historical_prices(base_coin + 'USDT', start_date=start_date)
+            base_coin_ = COINS_PRICE_MATCHES[base_coin] if base_coin in COINS_PRICE_MATCHES else base_coin
+            price_history = client_helper.get_historical_prices(base_coin_ + 'USDT', start_date=start_date)
             price_history = price_history[['Close', 'date']].set_index('date')
             price_history.columns = [base_coin]
             price_history_new.append(price_history)

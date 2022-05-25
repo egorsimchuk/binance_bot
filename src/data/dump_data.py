@@ -28,3 +28,4 @@ def dump_orders_data(orders: pd.DataFrame):
 
     new_orders.to_csv(DUMP_ORDERS_FPATH, index=False)
     logger.info(f'Orders dump was updated with {new_lines} new lines: {DUMP_ORDERS_FPATH}')
+    return new_orders

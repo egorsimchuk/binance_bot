@@ -2,15 +2,17 @@ from typing import List
 
 import pandas as pd
 
+from src.client.client import ClientHelper
 from src.data.preprocessing.base import BaseProcessor
 import logging
 from src.utils.utils import load_config_json, convert_timestamp_to_datetime, cast_all_to_float
+
 logger = logging.getLogger(__name__)
 
 
 class OrdersProcessor(BaseProcessor):
 
-    def __init__(self, divide_coin_convertion: bool = True):
+    def __init__(self, client_helper: ClientHelper, divide_coin_convertion: bool = True):
         """
         Args:
         currency_items: List of currencies for fetching.
@@ -21,6 +23,7 @@ class OrdersProcessor(BaseProcessor):
 
         """
         self.divide_coin_convertion = divide_coin_convertion
+        self._client_helper = client_helper
 
     def transform(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -38,7 +41,6 @@ class OrdersProcessor(BaseProcessor):
             data = data.sort_values('date').reset_index(drop=True)
         return data
 
-
     def divide_coin_convertion_into_usdt_operations(self, orders: pd.DataFrame, allowed_quote_coins: List[str] = None):
         if allowed_quote_coins is None:
             allowed_quote_coins = ['USDT', 'BUSD', 'RUB']
@@ -52,10 +54,7 @@ class OrdersProcessor(BaseProcessor):
             time = row['updateTime']
             sell_row = row.copy()
             sell_symbol = row['quote_coin'] + transaction_coin
-            logger.warning(sell_symbol)
-            logger.warning(time)
-            candle = self.client.get_aggregate_trades(symbol=sell_symbol, startTime=time, endTime=time + 1000, limit=1)[
-                0]
+            candle = self._client_helper.get_aggregate_trades(symbol=sell_symbol, time=time)
             sell_row['symbol'] = sell_symbol
             sell_row['side'] = 'SELL'
             sell_row['price'] = float(candle['p'])
@@ -67,8 +66,8 @@ class OrdersProcessor(BaseProcessor):
 
             buy_row = row.copy()
             buy_symbol = row['base_coin'] + transaction_coin
-            candle = self.client.get_aggregate_trades(symbol=buy_symbol, startTime=time, endTime=time + 1000, limit=1)[
-                0]
+            candle = self._client_helper.get_aggregate_trades(symbol=buy_symbol, time=time)
+
             buy_row['symbol'] = buy_symbol
             buy_row['price'] = float(candle['p'])
             buy_row['quote_coin'] = transaction_coin
