@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sqlalchemy import Column, Integer, BigInteger, Float, String
+from sqlalchemy import BigInteger, Column, Float, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -8,7 +8,7 @@ Base = declarative_base()
 
 class OrderModel(Base):
 
-    __tablename__ = 'orders'
+    __tablename__ = "orders"
 
     api_key = Column(String)
     symbol = Column(String)
@@ -32,6 +32,7 @@ class OrderModel(Base):
     base_coin = Column(String)
     quote_coin = Column(String)
     name = Column(String(30))
+
 
 @dataclass
 class OrderEntry:
@@ -59,7 +60,6 @@ class OrderEntry:
     name: str
 
 
-class OrderDAO():
-
+class OrderDAO:
     def __init__(self, session):
         self._session = session
