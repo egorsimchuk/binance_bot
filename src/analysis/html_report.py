@@ -1,20 +1,21 @@
-import webbrowser
-
-from src.analysis.analyse import AssetAnalyser, OrdersAnalyser, generate_asset_table
-from src.client.client import ClientHelper
-import pandas as pd
+import logging
 import time
+import webbrowser
 from datetime import datetime
 
+
+from src.analysis.analyse import (OrdersAnalyser, generate_asset_table)
+from src.client.client import ClientHelper
 from src.constants import remove_from_plots
-from src.data.dump_data import dump_orders_data, DATA_FOLDER
+from src.data.dump_data import DATA_FOLDER, dump_orders_data
 from src.data.orders_handler import load_and_process
 from src.data.preprocessing.orders import OrdersProcessor
 from src.utils.utils import get_html_body_from_plotly_figure
-import logging
+
 logger = logging.getLogger(__name__)
 
-REPORT_FOLDER = DATA_FOLDER / 'html_reports'
+REPORT_FOLDER = DATA_FOLDER / "html_reports"
+
 
 def make_report(api_key: str, api_secret: str, open_file: bool):
     start = time.time()
@@ -34,27 +35,46 @@ def make_report(api_key: str, api_secret: str, open_file: bool):
     history_assets = order_analyser.prepare_coins_asset_history()
     asset_history_long_fig = order_analyser.plot_full_asset_history(history_assets)
 
-    coins = asset_df['base_coin']
+    coins = asset_df["base_coin"]
     coins = [c for c in coins if c not in remove_from_plots]
     transactions_plots_dict = order_analyser.plot_transactions_many(coins)
-    transactions_plots_html = ''
+    transactions_plots_html = ""
     for coin, fig in transactions_plots_dict.items():
         transactions_plots_html += get_html_body_from_plotly_figure(fig)
 
-    fpath = generate_html_report(asset_df, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=open_file)
+    fpath = generate_html_report(
+        asset_df,
+        portfolio_fig,
+        asset_history_long_fig,
+        transactions_plots_html,
+        open_file=open_file,
+    )
     end = time.time()
-    logger.info(f'HTML report executed for {round(end - start)} seconds')
+    logger.info(f"HTML report executed for {round(end - start)} seconds")
 
     return fpath
 
 
-def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, transactions_plots_html, open_file=False):
+def generate_html_report(
+    mean_price,
+    portfolio_fig,
+    asset_history_long_fig,
+    transactions_plots_html,
+    open_file=False,
+):
     now_datetime = datetime.now()
 
-    mean_price_table = mean_price.round(3).to_html().replace('<table border="1" class="dataframe">',
-                                                             '<table class="table table-striped">')  # use bootstrap styling
+    mean_price_table = (
+        mean_price.round(3)
+        .to_html()
+        .replace(
+            '<table border="1" class="dataframe">',
+            '<table class="table table-striped">',
+        )
+    )  # use bootstrap styling
 
-    html_string = '''
+    html_string = (
+        """
     <html>
         <head>
             <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
@@ -62,29 +82,42 @@ def generate_html_report(mean_price, portfolio_fig, asset_history_long_fig, tran
             <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script></head>
         </head>
         <body>
-            <h1>Binance profile report at ''' + now_datetime.strftime("%Y-%m-%d %H:%M") + '''</h1>
+            <h1>Binance profile report at """
+        + now_datetime.strftime("%Y-%m-%d %H:%M")
+        + """</h1>
 
             <h2>Section 1: Asset composition</h2>
-            ''' + get_html_body_from_plotly_figure(portfolio_fig) + '''
-            ''' + get_html_body_from_plotly_figure(asset_history_long_fig) + '''
-            ''' + "" + '''
+            """
+        + get_html_body_from_plotly_figure(portfolio_fig)
+        + """
+            """
+        + get_html_body_from_plotly_figure(asset_history_long_fig)
+        + """
+            """
+        + ""
+        + """
 
             <h2>Section 2: Analysis of purchases</h2>
 
             <h3>Average purchase price and benefits compared to current price</h3>
-            ''' + mean_price_table + '''
+            """
+        + mean_price_table
+        + """
             <h3>Transactions history</h3>
-            ''' + transactions_plots_html + '''
+            """
+        + transactions_plots_html
+        + """
 
         </body>
-    </html>'''
+    </html>"""
+    )
 
-    now_time = now_datetime.strftime('%Y-%m-%d_%Hh%Mm')
+    now_time = now_datetime.strftime("%Y-%m-%d_%Hh%Mm")
     REPORT_FOLDER.mkdir(exist_ok=True, parents=True)
-    fpath = REPORT_FOLDER / f'{now_time}.html'
-    with open(fpath, 'w') as f:
+    fpath = REPORT_FOLDER / f"{now_time}.html"
+    with open(fpath, "w") as f:
         f.write(html_string)
-    logger.info(f'Report was saved at: {fpath}')
+    logger.info(f"Report was saved at: {fpath}")
 
     if open_file:
         url = "file:///" + str(fpath)

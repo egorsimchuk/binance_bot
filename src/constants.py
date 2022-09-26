@@ -1,2 +1,2 @@
-remove_from_plots = ['USDT']
-time_col = 'date'
+remove_from_plots = ["USDT"]
+time_col = "date"
