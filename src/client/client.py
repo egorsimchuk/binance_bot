@@ -122,7 +122,7 @@ class ClientHelper:
                             pool.map(
                                 self._query_pair_orders,
                                 currency_combinations[
-                                    i * batch_size : i * batch_size + batch_size
+                                    i * batch_size: i * batch_size + batch_size
                                 ],
                             )
                         )
@@ -220,7 +220,7 @@ class ClientHelper:
         cast_all_to_float(prices)
         main_currency = "USDT"
         prices = prices[
-            prices["symbol"].apply(lambda x: x[-len(main_currency) :] == main_currency)
+            prices["symbol"].apply(lambda x: x[-len(main_currency):] == main_currency)
         ]
         prices["base_coin"] = prices["symbol"].apply(lambda x: x[: -len(main_currency)])
         prices["quote_coin"] = main_currency

@@ -3,6 +3,7 @@ jupyter-client>=7.0.6
 jupyterlab>=3.1.18
 black
 isort
+autopep8
 pylint
 flake8
 bandit

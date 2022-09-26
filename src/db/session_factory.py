@@ -1,3 +1,4 @@
+from src.db.orders import OrderEntry
 import os
 from dataclasses import dataclass
 
@@ -38,9 +39,6 @@ def create_session_factory():
         f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOSTNAME}:{DB_PORT}/{DB_NAME}"
     )
     return SessionFactory(engine)
-
-
-from src.db.orders import OrderEntry
 
 
 class OrderDAO:

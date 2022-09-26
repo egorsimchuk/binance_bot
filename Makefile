@@ -4,6 +4,7 @@ SRC_DIR = "src"
 format:
 	black ${SRC_DIR}
 	isort ${SRC_DIR}
+	autopep8 --in-place --recursive ${SRC_DIR}
 
 lint:
 	export PYYHONPATH=SRC_DIR && pylint --rcfile setup.cfg ${SRC_DIR}

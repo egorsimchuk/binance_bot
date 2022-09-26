@@ -1,19 +1,19 @@
+from aiogram.utils import executor
+from aiogram.types import ParseMode
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher import FSMContext
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import Bot, Dispatcher, types
+import aiogram.utils.markdown as md
+from src.utils.utils import load_config_json
 import logging
 
 logger = logging.getLogger(__name__)
 
-from src.utils.utils import load_config_json
 
 API_TOKEN = load_config_json("config/telegram_bot/token.json")["token"]
 
-import aiogram.utils.markdown as md
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ParseMode
-from aiogram.utils import executor
 
 bot = Bot(token=API_TOKEN)
 
