@@ -3,10 +3,8 @@ import time
 import webbrowser
 from datetime import datetime
 
-import pandas as pd
 
-from src.analysis.analyse import (AssetAnalyser, OrdersAnalyser,
-                                  generate_asset_table)
+from src.analysis.analyse import (OrdersAnalyser, generate_asset_table)
 from src.client.client import ClientHelper
 from src.constants import remove_from_plots
 from src.data.dump_data import DATA_FOLDER, dump_orders_data

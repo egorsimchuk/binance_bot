@@ -1,4 +1,3 @@
-import plotly.express as px
 import plotly.graph_objects as go
 
 from src.constants import time_col

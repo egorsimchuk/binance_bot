@@ -5,8 +5,7 @@ import pandas as pd
 
 from src.client.client import ClientHelper
 from src.data.preprocessing.base import BaseProcessor
-from src.utils.utils import (cast_all_to_float, convert_timestamp_to_datetime,
-                             load_config_json)
+from src.utils.utils import (cast_all_to_float, convert_timestamp_to_datetime)
 
 logger = logging.getLogger(__name__)
 

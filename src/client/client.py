@@ -131,7 +131,6 @@ class ClientHelper:
                     logger.warning(ex.message)
                     logger.info("Avoid APIError(code=-1003), sleep extra 60 seconds")
                     sleep(60)
-                    pass
             sleep(10)
 
         orders_lists = [o for o in orders_lists if o is not None]
