@@ -1,9 +1,10 @@
-from src.db.orders import OrderEntry
 import os
 from dataclasses import dataclass
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+from src.db.orders import OrderEntry
 
 DB_USER = os.environ.get("DB_USER", "postgres")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
